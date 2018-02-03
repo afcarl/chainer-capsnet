@@ -13,8 +13,9 @@ import nets
 
 def main():
     parser = argparse.ArgumentParser(description='CapsNet: MNIST')
-    parser.add_argument('--batchsize', '-b', type=int, default=256)
-    parser.add_argument('--decay', '-d', type=float, default=0.95)
+    parser.add_argument('--batchsize', '-b', type=int, default=128)
+    parser.add_argument('--decay-rate', '-d', type=float, default=0.96)
+    parser.add_argument('--decay-steps', type=int, default=2000)
     parser.add_argument('--epoch', '-e', type=int, default=500)
     parser.add_argument('--gpu', '-g', type=int, default=-1)
     parser.add_argument('--seed', '-s', type=int, default=789)
@@ -53,11 +54,18 @@ def main():
 
     best = 0.
     best_epoch = 0
+    print('iter/epoch', int(len(train) / args.batchsize))
+    print('epoch', args.epoch)
+    print('total iters', int(len(train) / args.batchsize) * args.epoch)
     print('TRAINING starts')
     while train_iter.epoch < args.epoch:
         batch = train_iter.next()
         x, t = concat_examples(batch, args.gpu)
         optimizer.update(model, x, t)
+
+        if optimizer.t % args.decay_steps == 0:
+            optimizer.alpha *= args.decay_rate
+            print('\t\t# optimizer alpha', optimizer.alpha)
 
         # evaluation
         if train_iter.is_new_epoch:
@@ -75,9 +83,6 @@ def main():
                 best, best_epoch = result['accuracy'], train_iter.epoch
                 serializers.save_npz(args.save, model)
 
-            optimizer.alpha *= args.decay
-            optimizer.alpha = max(optimizer.alpha, 1e-5)
-            print('\t\t# optimizer alpha', optimizer.alpha)
             test_iter.reset()
     print('Finish: Best accuray: {} at {} epoch'.format(best, best_epoch))
 
