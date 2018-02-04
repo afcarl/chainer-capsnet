@@ -5,6 +5,20 @@ from chainer import cuda
 import chainer.functions as F
 import chainer.links as L
 
+from scipy.ndimage.interpolation import rotate
+
+
+def _randomly_rotate(x, degree=15):
+    # batchsize, ch, h, w = x.shape
+    xp = cuda.get_array_module(x)
+    if xp != np:
+        x = cuda.to_cpu(x)
+    degree = np.random.uniform(- degree, degree)
+    a = rotate(x, degree, axes=(3, 2), reshape=False, order=1)
+    if xp != np:
+        a = xp.array(a)
+    return a.astype(x.dtype)
+
 
 def _augmentation(x):
     xp = cuda.get_array_module(x)
@@ -17,6 +31,8 @@ def _augmentation(x):
     x_w_sl = slice(max(0, - w_shift), - w_shift + w)
     a = xp.zeros(x.shape)
     a[:, :, a_h_sl, a_w_sl] = x[:, :, x_h_sl, x_w_sl]
+
+    a = _randomly_rotate(a, degree=15)
     return a.astype(x.dtype)
 
 
